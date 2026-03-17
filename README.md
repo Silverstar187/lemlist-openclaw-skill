@@ -1,3 +1,5 @@
+![Lemlist OpenClaw Skill](hero.png)
+
 # Lemlist OpenClaw Skill
 
 Direct Lemlist API integration for OpenClaw. No external proxies. No trial-and-error. Works on first try.
@@ -125,6 +127,29 @@ python -m pytest tests/
 # Run specific workflow test
 python -m pytest tests/test_common_mistakes.py -v
 ```
+
+## Performance
+
+The Lemlist API performs reliably for complex workflows. Results from our latest automated performance test (2026-03-17):
+
+| Metric | Result |
+|--------|--------|
+| **Total Workflow Duration** | ~5-7 seconds |
+| **Success Rate** | 100% |
+| **Total Steps** | 13 |
+| **Retries Needed** | 0 |
+
+### Step Breakdown (Sample Run)
+
+| Step | Description | Duration | Status |
+|------|-------------|----------|--------|
+| 1 | Create Campaign | 279ms | 200 ✓ |
+| 2 | Add leads (5x) | ~300ms avg | 200 ✓ |
+| 3 | Update variables (5x) | ~350ms avg | 200 ✓ |
+| 4 | Verify leads | 76ms | 200 ✓ |
+| 5 | Archive Campaign | 191ms | 200 ✓ |
+
+**Key Finding:** `DELETE /campaigns/{id}` returns **HTTP 405**. Use `PATCH` with `{"archived": true}` instead.
 
 ## Validation
 
