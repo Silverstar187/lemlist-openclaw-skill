@@ -1,0 +1,60 @@
+{
+  "name": "lemlist-official",
+  "version": "1.0.0",
+  "description": "Official Lemlist API integration for OpenClaw with 130+ endpoints",
+  "author": "Silverstar187",
+  "license": "MIT",
+  "homepage": "https://github.com/Silverstar187/lemlist-openclaw-skill",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Silverstar187/lemlist-openclaw-skill.git"
+  },
+  "keywords": [
+    "lemlist",
+    "api",
+    "outreach",
+    "email",
+    "campaigns",
+    "leads",
+    "openclaw",
+    "skill"
+  ],
+  "openclaw": {
+    "emoji": "📧",
+    "category": "sales",
+    "requires": {
+      "env": ["LEMLIST_API_KEY"]
+    },
+    "min_api_version": "v1"
+  },
+  "api": {
+    "base_url": "https://api.lemlist.com/api",
+    "version": "v2",
+    "rate_limit": {
+      "requests": 20,
+      "window": "2s"
+    },
+    "authentication": {
+      "type": "basic",
+      "username": "",
+      "password_env": "LEMLIST_API_KEY"
+    }
+  },
+  "endpoints": {
+    "campaigns": 12,
+    "leads": 11,
+    "inbox": 14,
+    "activities": 1,
+    "tasks": 4,
+    "team": 5,
+    "webhooks": 3,
+    "unsubscribes": 4,
+    "enrichment": 4,
+    "database": 5,
+    "email_accounts": 3,
+    "lemwarm": 4,
+    "schedules": 5,
+    "sequences": 3,
+    "total": 130
+  }
+}
