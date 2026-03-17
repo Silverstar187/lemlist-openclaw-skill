@@ -114,6 +114,39 @@ GET /campaigns/{id}/leads/{leadId}
 
 ---
 
+### 6. contactId Lookup funktioniert nicht
+
+**Problem:** `/leads?contactId=...` gibt Fehler oder ungültige Antwort
+
+**Fehler:**
+```bash
+curl -s "https://api.lemlist.com/api/leads?contactId=ctc_xxx" \
+  --user ":$API_KEY"
+# jq: parse error: Invalid numeric literal
+```
+
+**Lösung:** Nutze den Campaign-Lead Endpunkt mit der Lead-ID:
+```bash
+# ❌ FALSCH (broken)
+GET /leads?contactId=ctc_xxx
+GET /leads/ctc_xxx
+
+# ✅ RICHTIG
+# 1. Lead-ID aus Campaign holen
+GET /campaigns/{campaignId}/leads
+# Response: [{"_id": "lea_xxx", "contactId": "ctc_xxx", ...}]
+
+# 2. Lead-ID verwenden für Details
+GET /campaigns/{campaignId}/leads/lea_xxx
+```
+
+**Alternative:** Activities Endpoint für Lead-Daten:
+```bash
+GET /activities?version=v2&campaignId={id}&limit=1
+```
+
+---
+
 ## 🚀 Optimierte Workflows
 
 ### Workflow: Alle Leads mit Variablen abrufen
