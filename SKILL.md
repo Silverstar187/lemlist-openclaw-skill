@@ -1,5 +1,5 @@
 ---
-name: lemlist-official
+name: lemlist-openclaw
 description: |
   Official Lemlist API integration for OpenClaw.
   Direct API access without external proxies.

@@ -1,6 +1,6 @@
-# Lemlist Official Skill
+# Lemlist OpenClaw Skill
 
-📧 Official Lemlist API integration for OpenClaw with direct API access.
+📧 Lemlist API integration for OpenClaw with direct API access.
 
 ## Overview
 
