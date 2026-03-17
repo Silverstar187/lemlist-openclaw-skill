@@ -117,6 +117,42 @@ curl -H "Authorization: Basic $AUTH" \
 | `/leads/interested/{leadId}` | POST | Mark as interested |
 | `/leads/notinterested/{leadId}` | POST | Mark as not interested |
 
+### Lead Variables (IMPORTANT!)
+
+⚠️ **CRITICAL:** Lead variables ONLY work through the Campaign context!
+
+**❌ BROKEN - Do NOT use:**
+```
+POST /leads/{leadId}/variables
+PATCH /leads/{leadId}/variables
+DELETE /leads/{leadId}/variables
+GET /leads/{leadId}  (often returns "not found")
+```
+
+**✅ CORRECT - Use these instead:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead variables |
+| `/campaigns/{id}/leads/{leadId}` | GET | Get lead with variables |
+| `/campaigns/{id}/leads` | GET | List all leads with variables |
+
+**Setting Variables:**
+```bash
+PATCH /campaigns/{campaignId}/leads/{leadId}
+Body: {
+  "variables": {
+    "custom_field": "value",
+    "priority": "high"
+  }
+}
+```
+
+**Notes:**
+- Variables are merged (not overwritten) on PATCH
+- Always use Campaign context for reliable results
+- See `docs/PROCESS_DOCUMENTATION.md` for detailed workflow
+
 ### Inbox
 
 | Endpoint | Method | Description |
