@@ -4,21 +4,14 @@ description: |
   Official Lemlist API integration for OpenClaw.
   Direct API access without external proxies.
   130+ endpoints for campaigns, leads, inbox, and more.
-  Use when: (1) managing outreach campaigns, (2) adding/updating leads, 
-  (3) checking inbox messages, (4) tracking campaign stats, (5) managing webhooks.
-  NOT for: (1) general email sending → use email tools, (2) CRM management → use CRM skills.
-homepage: https://developer.lemlist.com
-user-invocable: true
 metadata:
-  author: Silverstar187
-  version: "1.0.0"
   openclaw:
     emoji: "📧"
-    homepage: "https://github.com/Silverstar187/lemlist-openclaw-skill"
+    skillKey: "lemlist-official"
+    userInvocable: true
     requires:
       env:
         - LEMLIST_API_KEY
-    primaryEnv: LEMLIST_API_KEY
 ---
 
 # Lemlist Official
