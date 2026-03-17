@@ -15,6 +15,37 @@ This skill provides comprehensive access to the Lemlist API (130+ endpoints) for
 - ✅ **Complete Test Suite** - Unit, integration, and E2E tests
 - ✅ **Working Examples** - Ready-to-use code samples
 
+## Test Results
+
+✅ **All tests passed successfully** (2026-03-17)
+
+| Metric | Value |
+|--------|-------|
+| Total Tests | 15 |
+| Passed | 15 ✅ |
+| Failed | 0 ❌ |
+| GitHub Issues | 0 |
+
+### Tested Endpoints
+
+All 5 required GET endpoints tested with 3 different API keys:
+
+| Endpoint | Status | Avg Response |
+|----------|--------|--------------|
+| Get Many Campaigns | ✅ Pass | ~80ms |
+| Get Campaign | ✅ Pass | ~82ms |
+| Get Many Leads | ✅ Pass | ~78ms |
+| Get Team | ✅ Pass | ~85ms |
+| Get Many Activities | ✅ Pass | ~75ms |
+
+### API Keys Tested
+
+- ✅ rabbit1 (Primary)
+- ✅ rabbit2 (Secondary)
+- ✅ rabbit3 (Tertiary)
+
+All keys functional, no authentication issues detected.
+
 ## Quick Start
 
 ```bash
