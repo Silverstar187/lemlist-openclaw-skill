@@ -68,9 +68,14 @@ Official Lemlist API integration for OpenClaw with direct API access - no extern
 2. Sequenz-Struktur prüfen → GET /campaigns/{id}/sequences
    └─ Follow-up Step mit Delay > 0?
 3. Lead-Variablen prüfen → CSV Export (verlässlich!)
-   ├─ Leads mit {{email_betreff_follow1}} Variablen? → Aktivieren
-   └─ Leads ohne Variablen? → Variablen setzen ODER pausiert lassen
-4. Leads aktivieren → POST /leads/start/{leadId} (nur die mit Variablen!)
+   ├─ Leads mit {{email_betreff_follow1}} Variablen? → Weiter bei 4a
+   └─ Leads ohne Variablen? → Weiter bei 4b
+4a. Leads MIT Variablen:
+    └─ Nur die mit Variablen aktivieren → POST /leads/start/{leadId}
+4b. Leads OHNE Variablen (und noch nicht gestartet):
+    └─ NUR scanned Leads pausieren → POST /leads/pause/{leadId}
+       ⚠️ Achtung: Pause funktioniert NUR für scanned Leads!
+       Leads mit emailsSent/opened/clicked können NICHT pausiert werden!
 ```
 
 ### 🎯 USE CASE: "Lead-Variablen ändern"
@@ -405,8 +410,40 @@ curl -s -X POST "https://api.lemlist.com/api/leads/start/lea_xxx" \
 | `/leads` | GET | ⚠️ **BROKEN** - Use `/campaigns/{id}/leads` instead |
 | `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead variables |
 | `/campaigns/{id}/leads/{leadId}` | DELETE | Remove/unsubscribe lead |
-| `/leads/pause/{leadId}` | POST | Pause lead |
+| `/leads/pause/{leadId}` | POST | Pause lead (⚠️ **NUR für `scanned` Leads!**) |
 | `/leads/start/{leadId}` | POST | Resume lead |
+
+**⚠️ WICHTIG: Lead Pause funktioniert nur für `scanned` Leads!**
+
+Die Pause-API (`POST /leads/pause/{leadId}`) funktioniert **NUR** für Leads im Status `scanned` (die noch keine Email erhalten haben).
+
+**Warum?** Leads die bereits `emailsSent`, `emailsOpened`, `emailsClicked` oder `emailsBounced` sind, haben bereits die erste Email erhalten. Diese kann man NICHT mehr pausieren - sie sind bereits "unterwegs" in der Sequenz.
+
+**Richtiger Workflow zum Pausieren:**
+```bash
+# 1. Leads holen
+LEADS=$(curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/leads?limit=1000" \
+  --user ":$LEMLIST_API_KEY")
+
+# 2. NUR scanned Leads filtern (die man pausieren KANN)
+SCANNED_LEADS=$(echo $LEADS | jq -r '.[] | select(.state == "scanned") | ._id')
+
+# 3. Diese pausieren
+for LEAD_ID in $SCANNED_LEADS; do
+  curl -s -X POST "https://api.lemlist.com/api/leads/pause/$LEAD_ID" \
+    --user ":$LEMLIST_API_KEY"
+  sleep 0.15
+done
+```
+
+**Lead States Übersicht:**
+| State | Bedeutung | Pausierbar? |
+|-------|-----------|-------------|
+| `scanned` | Noch keine Email gesendet | ✅ Ja |
+| `emailsSent` | Email wurde gesendet | ❌ Nein |
+| `emailsOpened` | Email wurde geöffnet | ❌ Nein |
+| `emailsClicked` | Link in Email geklickt | ❌ Nein |
+| `emailsBounced` | Email bounced | ❌ Nein |
 | `/leads/interested/{leadId}` | POST | Mark as interested |
 | `/leads/notinterested/{leadId}` | POST | Mark as not interested |
 
