@@ -3,9 +3,9 @@ Lemlist API Client - Basis-Implementation für Tests
 """
 import base64
 import time
+from typing import Dict, Optional, List
+
 import requests
-from typing import Dict, Any, Optional, List
-from datetime import datetime
 
 
 class LemlistClient:

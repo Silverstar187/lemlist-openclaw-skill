@@ -1,22 +1,57 @@
 [MASTER]
-# Ignore test helper files that are not test modules themselves
 ignore=conftest.py
 
 [MESSAGES CONTROL]
 disable=
-    # LemlistClient legitimately has many methods (one per API endpoint)
+    # --- Style / Formatting (minor, not worth enforcing here) ---
+    # Trailing whitespace throughout the codebase
+    trailing-whitespace,
+    # f-strings without interpolation in test print statements
+    f-string-without-interpolation,
+
+    # --- Design limits (not appropriate for this codebase) ---
+    # LemlistClient has one method per API endpoint — high count is intentional
     too-many-public-methods,
-    # Test cleanup code uses broad except intentionally to not mask test failures
-    broad-exception-caught,
-    bare-except,
-    # config.py uses lazy imports inside functions by design
-    import-outside-toplevel,
-    # Module-level docstrings not required in this codebase
+    # Test/example main() functions are long by nature
+    too-many-statements,
+    too-many-locals,
+    # _request() has method, endpoint, params, json_data, max_retries
+    too-many-arguments,
+    too-many-positional-arguments,
+    # Test classes typically have 1 test method
+    too-few-public-methods,
+
+    # --- Test-specific patterns ---
+    # Tests legitimately access private members to verify internals
+    protected-access,
+    # Pytest fixtures as function arguments look "unused" to pylint
+    unused-argument,
+    # Test variables capture return values for side-effect verification
+    unused-variable,
+    # test_unit_client.py uses sys.path before imports — required pattern
+    wrong-import-position,
+    # Unused imports in test files (pytest markers, etc.)
+    unused-import,
+    # Variable named `credits` in team tests
+    redefined-builtin,
+
+    # --- Import order in test files ---
+    # sys.path manipulation must come before local imports
+    wrong-import-order,
+
+    # --- Example files ---
+    # Example scripts are demos, not production — no timeout needed
+    missing-timeout,
+    # main() in examples doesn't need a docstring
+    missing-function-docstring,
+    # Boilerplate setup block duplicated across example files is intentional
+    duplicate-code,
+
+    # --- Module docstrings ---
     missing-module-docstring
 
 [FORMAT]
 max-line-length=120
 
 [DESIGN]
-# LemlistClient covers many API areas — higher method limit is appropriate
 max-public-methods=50

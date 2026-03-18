@@ -1,7 +1,7 @@
 # Common Mistakes Test Suite
-
-> Diese Tests dokumentieren häufige Fehler und deren korrekte Lösungen
-> Basierend auf realen Fehlern von OpenClaw und anderen Agenten
+#
+# Diese Tests dokumentieren häufige Fehler und deren korrekte Lösungen
+# Basierend auf realen Fehlern von OpenClaw und anderen Agenten
 
 import pytest
 import requests
