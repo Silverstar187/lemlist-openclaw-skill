@@ -1,0 +1,34 @@
+[MASTER]
+ignore=conftest.py
+
+[MESSAGES CONTROL]
+disable=
+    trailing-whitespace,
+    f-string-without-interpolation,
+    too-many-public-methods,
+    too-many-statements,
+    too-many-locals,
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-few-public-methods,
+    protected-access,
+    unused-argument,
+    unused-variable,
+    wrong-import-position,
+    unused-import,
+    redefined-builtin,
+    wrong-import-order,
+    missing-timeout,
+    missing-function-docstring,
+    duplicate-code,
+    missing-module-docstring,
+    import-outside-toplevel,
+    bare-except,
+    broad-exception-caught,
+    invalid-name
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+max-public-methods=50

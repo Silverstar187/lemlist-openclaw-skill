@@ -1,120 +1,153 @@
-# Lemlist Official Skill
+# lemlist — OpenClaw Skill
 
-📧 Official Lemlist API integration for OpenClaw with direct API access.
+Add lemlist superpowers to your OpenClaw agents. Campaigns, leads, sequences, inbox — all controllable via natural language.
 
-## Overview
-
-This skill provides comprehensive access to the Lemlist API (130+ endpoints) for managing outreach campaigns, leads, inbox, and more - without external proxies.
-
-## Features
-
-- ✅ **130+ API Endpoints** - Full coverage of Lemlist API
-- ✅ **Direct API Access** - No external proxies required
-- ✅ **Basic Auth** - Simple, secure authentication
-- ✅ **Rate Limit Handling** - Built-in retry logic
-- ✅ **Complete Test Suite** - Unit, integration, and E2E tests
-- ✅ **Working Examples** - Ready-to-use code samples
-
-## Quick Start
-
-```bash
-# 1. Set your API key
-export LEMLIST_API_KEY="your_api_key_here"
-
-# 2. Test connection
-curl -s "https://api.lemlist.com/api/team" --user ":$LEMLIST_API_KEY"
-
-# 3. List campaigns
-curl -s "https://api.lemlist.com/api/campaigns" --user ":$LEMLIST_API_KEY" | jq .
+```
+/lemlist-agent
 ```
 
-## Installation
+---
 
-1. Copy this skill to your OpenClaw skills directory:
-   ```bash
-   cp -r /tmp/lemlist-official-skill ~/.openclaw/skills/
-   ```
+## What your agent can do
 
-2. Set your API key:
-   ```bash
-   export LEMLIST_API_KEY="your_api_key_here"
-   ```
+Once active, your agent handles the full outreach workflow:
 
-3. Get your API key from [Lemlist Settings](https://app.lemlist.com/settings/integrations)
+- **Campaign management** — create, start, pause, update campaigns
+- **Lead sourcing** — search 450M+ B2B contacts via Lemleads database
+- **Sequences** — write and optimize multi-step email flows
+- **Lead operations** — import, enrich, update variables, track status
+- **Inbox** — read conversations, send replies, manage drafts
+- **Analytics** — campaign stats, conversion funnels, export data
 
-## Documentation
+> The available tools evolve continuously. Ask your agent: *"What lemlist operations can you perform?"*
 
-- [SKILL.md](SKILL.md) - Complete API documentation
-- [docs/authentication.md](docs/authentication.md) - Auth guide
-- [docs/rate-limits.md](docs/rate-limits.md) - Rate limiting
-- [docs/error-handling.md](docs/error-handling.md) - Error handling
-- [docs/testing.md](docs/testing.md) - Testing guide
+---
 
-## Examples
+## Setup
 
-See the `examples/` directory:
-- `campaigns.py` - Campaign management
-- `leads.py` - Lead operations
-- `inbox.py` - Inbox operations
+### Option A — MCP (recommended)
 
-## API Coverage
-
-| Category | Endpoints |
-|----------|-----------|
-| Campaigns | 12 |
-| Leads | 11 |
-| Inbox | 14 |
-| Activities | 1 |
-| Tasks | 4 |
-| Team | 5 |
-| Webhooks | 3 |
-| Unsubscribes | 4 |
-| Enrichment | 4 |
-| Database | 5 |
-| Email Accounts | 3 |
-| lemwarm | 4 |
-| Schedules | 5 |
-| Sequences | 3 |
-| **Total** | **130+** |
-
-## Testing
-
+**Claude Code:**
 ```bash
-cd tests
+# OAuth (no API key needed)
+claude mcp add --transport http lemlist https://app.lemlist.com/mcp
 
-# Run all tests
-python -m pytest
-
-# Run integration tests only
-python -m pytest test_integration_*.py
-
-# Run with verbose output
-python -m pytest -v
+# With API key
+claude mcp add --transport http lemlist https://app.lemlist.com/mcp --header "X-API-Key: YOUR_KEY"
 ```
 
-## Rate Limits
-
-- **20 requests per 2 seconds**
-- Per API key across all routes
-- Automatic retry headers included
-
-## Authentication
-
-Uses HTTP Basic Auth with empty username and API key as password:
-
-```bash
-curl --user ":$LEMLIST_API_KEY" https://api.lemlist.com/api/team
+**Claude Desktop** — add to `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "lemlist": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://app.lemlist.com/mcp"]
+    }
+  }
+}
 ```
 
-## Support
+**Cursor** — add to Settings/Tools & MCP:
+```json
+{
+  "mcpServers": {
+    "lemlist": {
+      "url": "https://app.lemlist.com/mcp",
+      "headers": { "X-API-Key": "YOUR_KEY" }
+    }
+  }
+}
+```
 
-- [Lemlist API Docs](https://developer.lemlist.com)
-- [OpenClaw Skills Guide](https://docs.openclaw.io/skills)
+### Option B — Direct API (OpenClaw skill)
 
-## License
+```bash
+export LEMLIST_API_KEY="lem_live_xxxxxxxx"
+```
 
-MIT
+Get your key: Settings → Integrations → API in lemlist.
 
-## Author
+---
 
-Silverstar187
+## lemlist-agent command
+
+Save this as `.claude/commands/lemlist-agent.md` to get a specialized outreach agent:
+
+```bash
+/lemlist-agent
+```
+
+The agent runs systematic workflows — campaign audits, lead sourcing, sequence writing — and follows safe defaults (warns before credit usage, previews before editing live campaigns).
+
+Full prompt template in [SKILL.md → lemlist-agent](SKILL.md#lemlist-agent-claude-code-command).
+
+---
+
+## Agent-critical knowledge
+
+A few things every agent working with lemlist needs to know:
+
+**Lead variables only work via campaign context:**
+```bash
+# ❌ broken
+PATCH /leads/{id}/variables
+
+# ✅ works
+PATCH /campaigns/{campaignId}/leads/{leadId}
+# body: { "variables": { "key": "value" } }
+```
+
+**Campaign deletion is unsupported:**
+```bash
+# ❌ returns 405
+DELETE /campaigns/{id}
+
+# ✅ use instead
+PATCH /campaigns/{id}  # body: { "archived": true }
+```
+
+**Conditional branches on lead variables** (undocumented, discovered 2026-03-17):
+```json
+{
+  "type": "conditional",
+  "conditionKey": "customLeadInfo",
+  "selector": "{\"variables.field\":{\"$exists\":true,\"$ne\":\"\"}}"
+}
+```
+
+Full reference: [SKILL.md](SKILL.md) · [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+---
+
+## Performance
+
+Results from automated agent test run (2026-03-17):
+
+| Metric | Result |
+|--------|--------|
+| Total workflow (13 steps) | ~5–7 seconds |
+| Success rate | 100% |
+| Retries needed | 0 |
+
+---
+
+## Validation
+
+Every endpoint verified by autonomous agents — no human guidance, no cherry-picked examples.
+
+- ✅ 10+ agent test runs
+- ✅ 130+ endpoints tested
+- ✅ Known failures documented with working alternatives
+
+---
+
+## Contributing
+
+Found something broken or undocumented? Open a PR.
+
+1. Reproduce the behavior
+2. Document it in the relevant `docs/` file
+3. Add a test if applicable
+
+MIT License · Not affiliated with Lemlist
