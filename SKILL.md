@@ -34,6 +34,134 @@ Official Lemlist API integration for OpenClaw with direct API access - no extern
 - Managing external CRMs → use specific CRM skills
 - Bulk data processing → use dedicated ETL tools
 
+## MCP Server
+
+Lemlist bietet einen offiziellen MCP-Server unter `https://app.lemlist.com/mcp`.
+
+> **Tipp:** Die verfügbaren MCP-Tools entwickeln sich täglich weiter. Frage deinen AI-Assistenten direkt: *"What lemlist operations can you perform?"*
+
+### OAuth (kein API-Key nötig)
+
+#### Claude Code (OAuth)
+
+```bash
+claude mcp add --transport http lemlist https://app.lemlist.com/mcp
+```
+
+Beim ersten Aufruf öffnet sich automatisch ein Browser-Consent-Fenster.
+Token-Lebensdauer: Access Token **1h**, Refresh Token **30 Tage** — wird automatisch verwaltet.
+
+#### Claude Desktop (OAuth) — `claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "lemlist": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://app.lemlist.com/mcp"]
+    }
+  }
+}
+```
+
+### Mit API-Key
+
+#### Claude Code
+
+```bash
+claude mcp add --transport http lemlist https://app.lemlist.com/mcp --header "X-API-Key: PUTYOURAPIKEY"
+```
+
+#### Cursor — Settings/Tools & MCP
+
+```json
+{
+  "mcpServers": {
+    "lemlist": {
+      "url": "https://app.lemlist.com/mcp",
+      "headers": { "X-API-Key": "... YOUR API KEY ..." }
+    }
+  }
+}
+```
+
+#### Claude Desktop mit npm — `claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "lemlist": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://app.lemlist.com/mcp",
+        "--header",
+        "X-API-Key: ${API_KEY}"
+      ],
+      "env": { "API_KEY": "... YOUR API KEY ..." }
+    }
+  }
+}
+```
+
+**Windows:**
+
+```json
+{
+  "lemlist": {
+    "command": "C:\\PROGRA~1\\nodejs\\npx.cmd",
+    "args": ["mcp-remote", "https://app.lemlist.com/mcp", "--header", "X-API-Key: ${API_KEY}"],
+    "env": { "API_KEY": "... YOUR API KEY ..." }
+  }
+}
+```
+
+### MCP Tool-Namen (wichtigste)
+
+| Tool | Beschreibung |
+|------|-------------|
+| `get_campaigns` | Alle Kampagnen auflisten |
+| `get_campaign_details` | Kampagnen-Details abrufen |
+| `get_campaign_sequences` | E-Mail-Sequenz/Copy abrufen |
+| `get_campaign_stats` | Performance-Metriken analysieren |
+| `create_campaign_with_sequence` | Neue Kampagne mit Sequenz anlegen |
+| `add_sequence_step` | Follow-up hinzufügen |
+| `preview_sequence_update` | Änderungen vor Anwendung prüfen |
+| `update_sequence_step` | Bestehende E-Mails bearbeiten |
+| `search_campaign_leads` | Leads nach E-Mail/ID suchen |
+| `add_lead_to_campaign` | Lead importieren (mit optionalem Enrichment) |
+| `get_lemleads_filters` | Verfügbare Suchfilter abrufen |
+| `lemleads_search` | 450M+ B2B-Datenbank durchsuchen |
+| `get_team_info` | Team-Details abrufen |
+
+### MCP Technischer Stack
+
+- **Stack:** Node.js (MeteorJS)
+- **Protokoll:** MCP (JSON-RPC 2.0 über HTTP/POST)
+- **Auth:** `X-API-Key` Header oder OAuth
+- **Validation:** Zod Schemas
+- **Health Check:** `GET https://app.lemlist.com/mcp/health`
+
+### lemlist-agent (Claude Code Command)
+
+Spezialisierter Agent als wiederverwendbarer `/lemlist-agent` Command. Datei unter `.claude/commands/lemlist-agent.md` ablegen:
+
+```bash
+# Aktivieren mit:
+/lemlist-agent
+```
+
+Der Agent führt automatisch Campaign-Audits durch, sourct Leads aus der Lemleads-Datenbank und erstellt optimierte E-Mail-Sequenzen (AIDA, PAS, BAB Frameworks).
+
+**Sicherheits-Protokolle des Agents:**
+
+- Warnt vor Credit-Kosten bei: `findEmail`, `verifyEmail`, `linkedinEnrichment`, `findPhone`
+- Nutzt `preview_sequence_update` vor Live-Änderungen
+- Prüft Kampagnenstatus vor Bearbeitung (laufende Kampagnen können nicht editiert werden)
+- Fordert Bestätigung vor Änderungen an laufenden Kampagnen
+
+---
+
 ## Quick Start
 
 ### 1. Setup
@@ -341,3 +469,22 @@ See `examples/` directory for complete working examples:
 - Campaign exports are available for 24 hours after completion
 - Webhook events are sent as POST requests to your URL
 - Credits are consumed for enrichment operations
+
+## Email Personalization — Liquid Syntax
+
+Lemlist verwendet Liquid-Syntax für dynamische E-Mail-Inhalte:
+
+```liquid
+{{ firstName | default: "there" }}
+{{ companyName | default: "your company" }}
+
+{% if companyName %}your neighbors in{% else %}those in{% endif %} Silicon Valley
+```
+
+**Best Practices:**
+- Immer `| default: "..."` setzen, damit Emails auch ohne den Wert valide sind
+- Personalisierung über `{{firstName}}` hinaus: Firma, Branche, aktuelle News
+- E-Mails unter 100 Wörter halten
+- Ein klarer CTA pro E-Mail
+- Versandzeiten: Dienstag–Donnerstag, 8–10 Uhr oder 14–16 Uhr (Empfänger-Timezone)
+- Follow-up-Abstand: Tag 3, 7, 14
