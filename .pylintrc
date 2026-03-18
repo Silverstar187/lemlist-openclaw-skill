@@ -1,0 +1,22 @@
+[MASTER]
+# Ignore test helper files that are not test modules themselves
+ignore=conftest.py
+
+[MESSAGES CONTROL]
+disable=
+    # LemlistClient legitimately has many methods (one per API endpoint)
+    too-many-public-methods,
+    # Test cleanup code uses broad except intentionally to not mask test failures
+    broad-exception-caught,
+    bare-except,
+    # config.py uses lazy imports inside functions by design
+    import-outside-toplevel,
+    # Module-level docstrings not required in this codebase
+    missing-module-docstring
+
+[FORMAT]
+max-line-length=120
+
+[DESIGN]
+# LemlistClient covers many API areas — higher method limit is appropriate
+max-public-methods=50

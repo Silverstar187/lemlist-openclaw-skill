@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import Generator
 
 # Import client and config
+import os
 import sys
-sys.path.insert(0, '/tmp/lemlist_skill/tests')
+sys.path.insert(0, os.path.dirname(__file__))
 
 from lemlist_client import LemlistClient
 from config import get_test_campaign_name, get_test_lead_data
