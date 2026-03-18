@@ -227,7 +227,7 @@ curl -H "Authorization: Basic $AUTH" \
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/campaigns/{id}/leads` | GET | List leads in campaign |
+| `/campaigns/{id}/leads` | GET | List leads in campaign (⚠️ only `_id`, `state`, `contactId`) |
 | `/campaigns/{id}/leads` | POST | Add lead to campaign |
 | `/leads/{email}` | GET | Get lead by email |
 | `/leads` | GET | Get lead by email or ID |
@@ -237,6 +237,10 @@ curl -H "Authorization: Basic $AUTH" \
 | `/leads/start/{leadId}` | POST | Resume lead |
 | `/leads/interested/{leadId}` | POST | Mark as interested |
 | `/leads/notinterested/{leadId}` | POST | Mark as not interested |
+
+**Pagination:** Use `?limit=1000` - see [docs/PAGINATION.md](docs/PAGINATION.md)
+
+**Lead States:** `scanned`, `emailsSent`, `emailsOpened`, `emailsClicked`, `emailsBounced` - see [docs/LEAD_STATES.md](docs/LEAD_STATES.md)
 
 ### Lead Variables (IMPORTANT!)
 
@@ -488,3 +492,23 @@ Lemlist verwendet Liquid-Syntax für dynamische E-Mail-Inhalte:
 - Ein klarer CTA pro E-Mail
 - Versandzeiten: Dienstag–Donnerstag, 8–10 Uhr oder 14–16 Uhr (Empfänger-Timezone)
 - Follow-up-Abstand: Tag 3, 7, 14
+
+## Documentation
+
+For detailed guides on specific topics, see the `docs/` directory:
+
+| Document | Topic |
+|----------|-------|
+| [docs/authentication.md](docs/authentication.md) | Authentication methods |
+| [docs/error-handling.md](docs/error-handling.md) | Error codes and handling |
+| [docs/rate-limits.md](docs/rate-limits.md) | Rate limiting details |
+| [docs/PROCESS_DOCUMENTATION.md](docs/PROCESS_DOCUMENTATION.md) | Verified workflows |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [docs/PAGINATION.md](docs/PAGINATION.md) | Pagination behavior |
+| [docs/LEAD_STATES.md](docs/LEAD_STATES.md) | Lead state reference |
+| [docs/ASSUMPTIONS_TESTED.md](docs/ASSUMPTIONS_TESTED.md) | Tested assumptions |
+| [docs/testing.md](docs/testing.md) | Testing guidelines |
+
+---
+
+*Last updated: 2026-03-18*
