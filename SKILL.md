@@ -14,22 +14,6 @@ metadata:
         - LEMLIST_API_KEY
 ---
 
-# ⚠️ AGENTEN: DU MUSST DIESEN SKILL ZUERST LESEN!
-
-> **🤖 AGENT INSTRUCTION:** Wenn du diese Datei siehst, ist dein ERSTER SCHRIMM das Lesen dieser Datei `~/.agents/skills/lemlist-openclaw/SKILL.md`!
-> 
-> **WICHTIGE REGELN:**
-> 1. **IMMER Skill lesen zuerst** - Dieser Skill enthält kritische Workarounds
-> 2. **Lead API liefert oft leere Werte** → CSV Export verwenden!
-> 3. **NIE direkt API-Calls raten** - Die Endpoints sind unintuitiv
-> 
-> **Schnell-Navigation:**
-> - [🎯 Agent Playbook](#-agent-playbook-decision-trees)
-> - [⚠️ Lead API Troubleshooting](#-troubleshooting---leads-abrufen-leere-response)
-> - [📋 Quick Start](#quick-start)
-
----
-
 # Lemlist Official
 
 Official Lemlist API integration for OpenClaw with direct API access - no external proxies required.
@@ -49,43 +33,6 @@ Official Lemlist API integration for OpenClaw with direct API access - no extern
 - Sending general emails → use email CLI tools
 - Managing external CRMs → use specific CRM skills
 - Bulk data processing → use dedicated ETL tools
-
----
-
-## 🤖 Agent Playbook (Decision Trees)
-
-### 🎯 USE CASE: "Leads zur Campaign hinzufügen"
-```
-1. Lead-Daten vorbereiten (Email, firstName, variables)
-2. POST /campaigns/{id}/leads
-3. CSV Export verify: /campaigns/{id}/export/start → Download → Check
-```
-
-### 🎯 USE CASE: "Follow-ups sollen versendet werden"
-```
-1. Campaign Status prüfen → GET /campaigns/{id}
-   └─ Status != "running"? → POST /campaigns/{id}/start
-2. Sequenz-Struktur prüfen → GET /campaigns/{id}/sequences
-   └─ Follow-up Step mit Delay > 0?
-3. Lead-Variablen prüfen → CSV Export (verlässlich!)
-   ├─ Leads mit {{email_betreff_follow1}} Variablen? → Weiter bei 4a
-   └─ Leads ohne Variablen? → Weiter bei 4b
-4a. Leads MIT Variablen:
-    └─ Nur die mit Variablen aktivieren → POST /leads/start/{leadId}
-4b. Leads OHNE Variablen (und noch nicht gestartet):
-    └─ NUR scanned Leads pausieren → POST /leads/pause/{leadId}
-       ⚠️ Achtung: Pause funktioniert NUR für scanned Leads!
-       Leads mit emailsSent/opened/clicked können NICHT pausiert werden!
-```
-
-### 🎯 USE CASE: "Lead-Variablen ändern"
-```
-1. Lead-ID finden → CSV Export oder /campaigns/{id}/leads
-2. PATCH /campaigns/{id}/leads/{leadId} mit neuen Variablen
-3. Verifizieren → CSV Export (nicht Einzel-Lead API!)
-```
-
----
 
 ## MCP Server
 
@@ -232,58 +179,20 @@ curl -s "https://api.lemlist.com/api/team" \
   --user ":$LEMLIST_API_KEY" | jq .
 ```
 
-**⚠️ TROUBLESHOOTING - Auth Fehler:**
-- Fehler: `"The authentication you supplied is incorrect"` → API Key prüfen
-- Fehler: `"Bad team"` → API Key gehört zu falschem Account
-
-**Debugging & jq Best Practices:**
-
-```bash
-# RESPONSE IMMER ZUERST SPEICHERN - dann mit jq analysieren
-# Das vermeidet Syntax-Fehler bei komplexen jq-Filtern
-
-curl -s "https://api.lemlist.com/api/campaigns/cam_xxx/sequences" \
-  --user ":$LEMLIST_API_KEY" > /tmp/response.json
-
-# DANN: Einfache jq Filter verwenden
-jq '.[] | ._id, .name' /tmp/response.json           # IDs und Namen
-jq '.[] | .steps | length' /tmp/response.json      # Anzahl Steps
-jq '.[].steps[].subject' /tmp/response.json        # Alle Betreffzeilen
-
-# VERMEIDEN: Komplexe String-Interpolationen in jq
-# STATT: jq '.[] | "\(.id): \(.name)"'            # Kann fehlschlagen
-# BESSER: jq '.[] | {id: ._id, name: .name}'       # Sauberes JSON
-
-# API-Call debuggen mit verbose Output
-curl -v -X GET "https://api.lemlist.com/api/campaigns" \
-  --user ":$LEMLIST_API_KEY" 2>&1 | grep -E "(> |< |HTTP)"
-```
-
 ### 3. List Campaigns
 
 ```bash
 curl -s "https://api.lemlist.com/api/campaigns" \
   --user ":$LEMLIST_API_KEY" | jq '.[] | {id: ._id, name: .name, status: .status}'
-
-# Campaign nach Name filtern (case-insensitive)
-curl -s "https://api.lemlist.com/api/campaigns" \
-  --user ":$LEMLIST_API_KEY" | jq '.[] | select(.name | ascii_downcase | contains("search_term")) | {id: ._id, name: .name, status: .status}'
 ```
 
 ## Authentication
 
+⚠️ **NICHT Bearer-Token!** Lemlist nutzt HTTP Basic Auth, nicht Bearer. Häufiger Fehler.
+
+⚠️ **API v2:** über Query-Param `?version=v2` aktivieren, NICHT Pfad-Änderung. Base bleibt `https://api.lemlist.com/api`.
+
 Lemlist uses **HTTP Basic Auth** with an empty username and your API key as the password:
-
-**REGEL: API-Key IMMER aus der .env im lemlist-integration Ordner holen:**
-```bash
-# 1. API Key aus der .env Datei laden
-export LEMLIST_API_KEY="your_api_key_here"
-# Alternative: Aus Umgebungsvariable laden
-# export LEMLIST_API_KEY="$LEMLIST_API_KEY"
-
-# 2. ODER direkt setzen (nur wenn .env nicht verfügbar)
-export LEMLIST_API_KEY="your_key_here"
-```
 
 ```bash
 # Format: :API_KEY (note the leading colon)
@@ -308,10 +217,11 @@ curl -H "Authorization: Basic $AUTH" \
 | `/campaigns` | GET | List all campaigns |
 | `/campaigns` | POST | Create new campaign |
 | `/campaigns/{id}` | GET | Get campaign details |
-| `/campaigns/{id}` | PATCH | Update campaign (name, archived) |
-| `/campaigns/{id}` | DELETE | ⚠️ **NOT SUPPORTED** - 405 Error |
-| `/campaigns/{id}/start` | POST | **Start campaign** - Triggert Follow-up Versand |
-| `/campaigns/{id}/pause` | POST | **Pause campaign** - Stoppt alle Aktivitäten |
+| `/campaigns/{id}` | PATCH | Update campaign name |
+| `/campaigns/{id}` | DELETE | Delete campaign |
+| `/campaigns/{id}/duplicate` | POST | **Duplicate campaign** — body: `{name}` — kopiert Sequence-Steps + Schedules + AI-Vars in 1 Call (sauberster Weg für Tenant-from-Template) |
+| `/campaigns/{id}/start` | POST | Start campaign |
+| `/campaigns/{id}/pause` | POST | Pause campaign |
 | `/campaigns/{id}/stats` | GET | Get campaign statistics |
 | `/campaigns/reports` | GET | Get aggregated reports |
 | `/campaigns/{id}/export/start` | GET | Start CSV export |
@@ -319,131 +229,18 @@ curl -H "Authorization: Basic $AUTH" \
 | `/campaigns/{id}/sequences` | GET | Get campaign sequences |
 | `/campaigns/{id}/schedules` | GET | Get campaign schedules |
 
-**Sequenz-Struktur analysieren:**
-
-```bash
-# Alle Steps einer Campaign anzeigen
-CAMPAIGN_ID="cam_xxx"
-curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/sequences" \
-  --user ":$LEMLIST_API_KEY" | jq '.[] | {seqId: ._id, steps: [.steps[] | {index, delay, subject, templateId: .emailTemplateId}]}'
-```
-
-**Template-Variablen extrahieren (ALLE Variablen in einer Sequenz):**
-
-```bash
-# WICHTIG: Variablen sind in {{doppelten_geschweiften_klammern}}
-# Extrahiere ALLE Variablen aus allen Sequenzen einer Campaign
-CAMPAIGN_ID="cam_xxx"
-curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/sequences" \
-  --user ":$LEMLIST_API_KEY" | grep -oE '\{\{[^}]+\}\}' | sort | uniq
-
-# Beispiel-Output:
-# {{email_betreff_1}}
-# {{email_betreff_follow1}}
-# {{email_nachricht_1}}
-# {{email_nachricht_follow1}}
-```
-
-**⚠️ TROUBLESHOOTING - Campaign löschen:**
-
-`DELETE /campaigns/{id}` gibt **405 Method Not Allowed**!
-
-**✅ Lösung - Campaign archivieren statt löschen:**
-```bash
-# Campaign archivieren (soft delete)
-PATCH /campaigns/{id}
-Body: {"archived": true}
-```
-
----
-
-### Campaign Status & Follow-up Steuerung
-
-**USE CASE: Campaign pausiert → Follow-ups sollen versendet werden**
-
-```bash
-CAMPAIGN_ID="cam_xxx"
-
-# 1. Aktuellen Status prüfen
-curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID" \
-  --user ":$LEMLIST_API_KEY" | jq '{id: ._id, name: .name, status: .status}'
-
-# 2. Campaign starten (reaktiviert automatisch alle Leads)
-curl -s -X POST "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/start" \
-  --user ":$LEMLIST_API_KEY" | jq '.'
-
-# 3. Status verifizieren (sollte "running" sein)
-curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID" \
-  --user ":$LEMLIST_API_KEY" | jq '.status'
-```
-
-**WANN WERDEN FOLLOW-UPS VERSENDET?**
-
-| Campaign Status | Lead Status | Follow-up wird versendet? |
-|----------------|-------------|---------------------------|
-| `running` | `emailsSent` | ✅ Ja (nach Delay) |
-| `running` | `emailsOpened` | ✅ Ja (nach Delay) |
-| `running` | `emailsClicked` | ✅ Ja (nach Delay) |
-| `paused` | *irgendein* | ❌ Nein (Campaign gestoppt) |
-| `running` | `paused` | ❌ Nein (Lead manuell pausiert) |
-
-**Lead MANUELL reaktivieren (falls einzelner Lead pausiert ist):**
-```bash
-# Lead starten (nur wenn Lead individuell pausiert wurde)
-curl -s -X POST "https://api.lemlist.com/api/leads/start/lea_xxx" \
-  --user ":$LEMLIST_API_KEY"
-```
-
-**CHECKLIST: Follow-ups versenden:**
-1. ✅ Campaign Status = `running`
-2. ✅ Leads haben Variablen für Follow-up gesetzt (`email_betreff_follow1`)
-3. ✅ Leads sind nicht manuell pausiert (`state` != `paused`)
-4. ✅ Sequenz hat Follow-up Step mit korrektem Delay
-
 ### Leads
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/campaigns/{id}/leads` | GET | List leads in campaign |
+| `/campaigns/{id}/leads` | GET | List leads in campaign (⚠️ only `_id`, `state`, `contactId`) |
 | `/campaigns/{id}/leads` | POST | Add lead to campaign |
-| `/leads/{email}` | GET | ⚠️ **BROKEN** - Use `/campaigns/{id}/leads/{leadId}` instead |
-| `/leads` | GET | ⚠️ **BROKEN** - Use `/campaigns/{id}/leads` instead |
-| `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead variables |
+| `/leads/{email}` | GET | Get lead by email |
+| `/leads` | GET | Get lead by email or ID |
+| `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead |
 | `/campaigns/{id}/leads/{leadId}` | DELETE | Remove/unsubscribe lead |
-| `/leads/pause/{leadId}` | POST | Pause lead (⚠️ **NUR für `scanned` Leads!**) |
+| `/leads/pause/{leadId}` | POST | Pause lead |
 | `/leads/start/{leadId}` | POST | Resume lead |
-
-**⚠️ WICHTIG: Lead Pause funktioniert nur für `scanned` Leads!**
-
-Die Pause-API (`POST /leads/pause/{leadId}`) funktioniert **NUR** für Leads im Status `scanned` (die noch keine Email erhalten haben).
-
-**Warum?** Leads die bereits `emailsSent`, `emailsOpened`, `emailsClicked` oder `emailsBounced` sind, haben bereits die erste Email erhalten. Diese kann man NICHT mehr pausieren - sie sind bereits "unterwegs" in der Sequenz.
-
-**Richtiger Workflow zum Pausieren:**
-```bash
-# 1. Leads holen
-LEADS=$(curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/leads?limit=1000" \
-  --user ":$LEMLIST_API_KEY")
-
-# 2. NUR scanned Leads filtern (die man pausieren KANN)
-SCANNED_LEADS=$(echo $LEADS | jq -r '.[] | select(.state == "scanned") | ._id')
-
-# 3. Diese pausieren
-for LEAD_ID in $SCANNED_LEADS; do
-  curl -s -X POST "https://api.lemlist.com/api/leads/pause/$LEAD_ID" \
-    --user ":$LEMLIST_API_KEY"
-  sleep 0.15
-done
-```
-
-**Lead States Übersicht:**
-| State | Bedeutung | Pausierbar? |
-|-------|-----------|-------------|
-| `scanned` | Noch keine Email gesendet | ✅ Ja |
-| `emailsSent` | Email wurde gesendet | ❌ Nein |
-| `emailsOpened` | Email wurde geöffnet | ❌ Nein |
-| `emailsClicked` | Link in Email geklickt | ❌ Nein |
-| `emailsBounced` | Email bounced | ❌ Nein |
 | `/leads/interested/{leadId}` | POST | Mark as interested |
 | `/leads/notinterested/{leadId}` | POST | Mark as not interested |
 
@@ -451,109 +248,41 @@ done
 
 **Lead States:** `scanned`, `emailsSent`, `emailsOpened`, `emailsClicked`, `emailsBounced` - see [docs/LEAD_STATES.md](docs/LEAD_STATES.md)
 
----
+### Lead Variables (IMPORTANT!)
 
-## ⚠️ TROUBLESHOOTING - Leads abrufen (KRITISCH!)
+⚠️ **CRITICAL:** Lead variables ONLY work through the Campaign context!
 
-### 🔴 PROBLEM: Leads API gibt leere/unvollständige Werte zurück!
-
-Das Endpunkt `GET /campaigns/{id}/leads` gibt **nur** `_id`, `state`, `contactId` zurück - **keine vollständigen Lead-Daten oder Variablen**!
-
-Und `GET /campaigns/{id}/leads/{leadId}` gibt oft **HTTP 200 mit leerem Body** zurück!
-
-**❌ FALSCH (liefert NULL Werte):**
-```bash
-curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/leads" \
-  --user ":$LEMLIST_API_KEY" | jq '.[] | {email, firstName, variables}'
-# Output: {"email": null, "firstName": null, "variables": null}
+**❌ BROKEN - Do NOT use:**
+```
+POST /leads/{leadId}/variables
+PATCH /leads/{leadId}/variables
+DELETE /leads/{leadId}/variables
+GET /leads/{leadId}  (often returns "not found")
 ```
 
----
-
-## ✅ LÖSUNG: CSV Export (PRIMARY METHODE)
-
-**IMMER CSV Export verwenden für verlässliche Lead-Daten!**
-
-```bash
-CAMPAIGN_ID="cam_xxx"
-
-# 1. Export starten
-EXPORT_RESULT=$(curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/export/start" \
-  --user ":$LEMLIST_API_KEY")
-EXPORT_ID=$(echo $EXPORT_RESULT | jq -r '._id')
-FILE_URL=$(echo $EXPORT_RESULT | jq -r '.fileUrl')
-
-# 2. Falls fileUrl direkt verfügbar, sofort downloaden
-#    Sonst: 30-60 Sekunden warten und Status abfragen
-if [ "$FILE_URL" != "null" ] && [ -n "$FILE_URL" ]; then
-  curl -s "$FILE_URL" -o /tmp/leads.csv
-else
-  sleep 45
-  DOWNLOAD_URL=$(curl -s "https://api.lemlist.com/api/campaigns/$CAMPAIGN_ID/export/$EXPORT_ID/status" \
-    --user ":$LEMLIST_API_KEY" | jq -r '.fileUrl')
-  curl -s "$DOWNLOAD_URL" -o /tmp/leads.csv
-fi
-
-# 3. Lead-Daten filtern und analysieren
-echo "=== Leads mit Follow-up Variablen ==="
-grep "email_betreff_follow1" /tmp/leads.csv | wc -l
-
-# 4. Als JSON konvertieren für weitere Verarbeitung
-python3 -c "
-import csv, json
-with open('/tmp/leads.csv') as f:
-    leads = list(csv.DictReader(f))
-    # Filtern: Leads mit email_betreff_follow1 gesetzt
-    follow_leads = [l for l in leads if l.get('email_betreff_follow1')]
-    print(json.dumps(follow_leads, indent=2))
-    print(f'\nTotal: {len(leads)}, With follow1: {len(follow_leads)}', file=__import__('sys').stderr)
-"
-```
-
-**Entscheidungstabelle:**
-| Kriterium | CSV Export | Einzel-Lead API |
-|-----------|------------|-----------------|
-| **Zuverlässigkeit** | ✅ **100%** | ❌ 30% leere Response |
-| **Alle Daten** | ✅ Ja | ❌ Nur IDs |
-| **Speed** | ⚠️ 30-60s | ✅ Sofort |
-| **Empfohlen für Agenten** | ✅ **JA** | ❌ Nein |
-
----
-
-### Lead Variables
+**✅ CORRECT - Use these instead:**
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead variables (✅ **USE THIS**) |
-| `/campaigns/{id}/leads/{leadId}` | GET | Get lead with variables (✅ **USE THIS**) |
-| `/campaigns/{id}/leads` | GET | List leads (nur IDs, keine Variablen) |
+| `/campaigns/{id}/leads/{leadId}` | PATCH | Update lead variables |
+| `/campaigns/{id}/leads/{leadId}` | GET | Get lead with variables |
+| `/campaigns/{id}/leads` | GET | List all leads with variables |
 
-**⚠️ TROUBLESHOOTING - Lead Variablen:**
-
-**❌ BROKEN - NIE verwenden:**
-```
-POST /leads/{leadId}/variables  → {"error": "Variables not found"}
-PATCH /leads/{leadId}/variables → {"error": "Variables not found"}
-GET /leads/{leadId}             → "not found" oder unvollständig
-GET /leads?contactId=ctc_xxx    → jq parse error
-```
-
-**✅ KORREKT - Immer Campaign-Lead Kontext verwenden:**
+**Setting Variables:**
 ```bash
-# Variablen setzen/aktualisieren
 PATCH /campaigns/{campaignId}/leads/{leadId}
-Body: {"variables": {"custom_field": "value", "priority": "high"}}
-
-# Variablen abrufen
-GET /campaigns/{campaignId}/leads/{leadId}
+Body: {
+  "variables": {
+    "custom_field": "value",
+    "priority": "high"
+  }
+}
 ```
-
-**⚠️ PATCH Response Bug:**
-Der PATCH gibt manchmal `"variables": "[object Object]"` als String zurück - das ist ein API-Bug auf Lemlist-Seite. Der PATCH funktioniert trotzdem! Zur Verifikation erneut GET aufrufen.
 
 **Notes:**
-- Variables werden bei PATCH gemerged (nicht überschrieben)
-- IMMER Campaign-Lead Kontext verwenden für zuverlässige Ergebnisse
+- Variables are merged (not overwritten) on PATCH
+- Always use Campaign context for reliable results
+- See `docs/PROCESS_DOCUMENTATION.md` for detailed workflow
 
 ### Inbox
 
@@ -593,11 +322,23 @@ Der PATCH gibt manchmal `"variables": "[object Object]"` als String zurück - da
 
 ### Webhooks
 
+⚠️ **Signature-Validation:** Lemlist nutzt **KEIN HMAC**. Stattdessen wird das beim Create gesetzte `secret`-Field im JSON-Body jedes Webhook-Calls zurückgesendet. Validation = String-Compare auf Body-Field. Secret ist **immutable** nach Create und wird via `GET /hooks` NICHT zurückgegeben → bei Create lokal speichern.
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/hooks` | GET | List webhooks |
-| `/hooks` | POST | Create webhook |
+| `/hooks` | POST | Create webhook — body: `{targetUrl, events:[...], secret}` |
 | `/hooks/{hookId}` | DELETE | Delete webhook |
+
+**Verfügbare Events** (50+ — Lemlist-Stand 2026-05):
+- **Email:** `emailsSent, emailsOpened, emailsClicked, emailsReplied, emailsBounced, emailsSendFailed, emailsFailed, emailsUnsubscribed, emailsInterested, emailsNotInterested`
+- **Activity:** `contacted, hooked, attracted, warmed, interested, skipped, notInterested, opportunitiesDone, paused, resumed`
+- **LinkedIn:** `linkedinVisitDone/Failed, linkedinInviteDone/Failed/Accepted, linkedinReplied, linkedinSent, linkedinVoiceNoteDone/Failed, linkedinInterested/NotInterested, linkedinSendFailed`
+- **Aircall (Phone):** `aircallCreated/Ended/Done/Interested/NotInterested`
+- **API/Manual:** `apiDone/Interested/NotInterested/Failed, manualInterested/NotInterested`
+- **Operational:** `customDomainErrors, connectionIssue, sendLimitReached, lemwarmPaused, campaignComplete, annotated, enrichmentDone/Error, callRecordingDone, callTranscriptDone`
+
+**KEIN Event** für `mailboxConnected` / `oauthCompleted` → Polling auf `GET /user.mailboxes` Pflicht.
 
 ### Unsubscribes
 
@@ -617,27 +358,73 @@ Der PATCH gibt manchmal `"variables": "[object Object]"` als String zurück - da
 | `/enrich/{enrichId}` | GET | Get enrichment result |
 | `/leads/{leadId}/enrich` | POST | Enrich existing lead |
 
-### Database
+### Database (Lemleads B2B-DB, 450M)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/schema/people` | GET | Get people schema |
 | `/schema/companies` | GET | Get companies schema |
-| `/database/filters` | GET | Get database filters |
-| `/database/people` | POST | Search people database |
-| `/database/companies` | POST | Search companies database |
+| `/database/filters` | GET | Get database filters — **39 filterIds incl. industry tree, seniority enum, headcount bands, etc.** Full spec: [docs/DATABASE_FILTERS.md](docs/DATABASE_FILTERS.md) + raw [docs/database-filters-spec.json](docs/database-filters-spec.json) |
+| `/database/people` | POST | Search people database — body `{filters:[{filterId,in[],out[]}], page, size}`, max 100/page |
+| `/database/companies` | POST | Search companies database — same shape, only `mode:companies` filterIds |
 
-### Email Accounts & lemwarm
+#### Filter Quick-Reference (most common ICP fields)
+- **Role:** `currentTitle`, `seniority` (7-enum: Entry-Level → Ownership / Firm Leadership), `department` (~30-enum)
+- **Company:** `currentCompanyHeadcount` (8 bands), `currentCompanySubIndustry` (hierarchical level), `currentCompanyRevenue` (8 buckets), `currentCompanyMarket` (B2B/B2C/B2B/B2C), `currentCompanyType`
+- **Geo:** `country`, `region` (incl. `DACH` shorthand), `currentCompanyCountry`
+- **Search keywords:** `keyword` (profile-level: headline+summary+skills), `keywordInCompany` (company-description-level — use to dodge "fridge in plane post" false-positives)
+
+⚠️ **Seniority enum changed** in 2026 — old `CxO/Director/Vice President/Owner-Partner` no longer match. Migrate to current 7-level enum.
+
+⚠️ **Silent zero on bad values** (verified 2026-05-21): an off-taxonomy filter value (e.g. legacy `currentCompanySubIndustry` strings like `Computer Software`/`Internet`) returns `200 {results:[],total:0}`, NOT an error. filterIds are AND-ed → one stale value zeroes the whole search. On unexpected-empty, isolate filters one at a time. Look subIndustry values up via `GET /database/filters`, never guess.
+
+⚠️ **No email in discovery** — `/database/people` results carry no email; email needs the paid enrichment endpoints. Response also returns `total`, `took`(ms), `search`(`lsh_` handle), `limitation`(remaining daily-search quota), `team`.
+
+### CRM (verified live 2026-05-04)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/email-accounts` | POST | Connect email account |
-| `/email-accounts/{id}` | DELETE | Disconnect email account |
+| `/contacts` | GET, POST | Contacts CRUD (POST needs identifier in body) |
+| `/companies` | GET, POST | Companies CRUD |
+| `/fields` | GET | Custom Fields (read-only — POST returns 405) |
+| `/tasks` | GET, POST | Tasks CRUD |
+| `/watchlist/signals` | GET | Watchlist signals stream |
+
+### Inbox-Labels
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/inbox/labels` | GET, POST | List/create labels |
+
+### NOT-EXISTS (verified — vorher fälschlich im Skill)
+
+Diese Pfade sind HTML-catchall (= Lemlist-Web-App-Route, KEIN API):
+- `/contact-lists` ❌
+- `/notes` ❌
+- `/opportunities` ❌
+- `/email-accounts` (ohne `/user/` prefix) ❌ — korrekt: `/user/email-accounts`
+- `/inbox/drafts/{contactId}` GET ❌ — Draft-Pfad zu klären
+- `/teams`, `/users`, `/billing/cards`, `/domains`, `/team/sending/domains` ❌ (kein Tenant-Provisioning-API)
+
+### Email Accounts & lemwarm
+
+⚠️ **Path-Correction:** Email-Accounts hängen unter `/user/email-accounts`, NICHT `/email-accounts` (Skill-Annahme war falsch — Live-test 2026-05-04: `/email-accounts` GET = HTML-catchall, `/user/email-accounts` GET = 402 Plan-blocked = real route).
+
+⚠️ **Gmail/Microsoft:** SMTP/IMAP-Direct-Connect wird **abgelehnt** — OAuth-UI-Klick zwingend. Custom-SMTP-Provider (Postmark, Mailgun, eigene Server) gehen API-able mit `smtp_host/port/login/password` + `imap_*` Body.
+
+⚠️ **lemwarm 2-Call-Pattern:** Start ist parameterlos (`POST /lemwarm/{id}/start` body=empty → returns `{ok:true}`). Settings via separater `PATCH /lemwarm/{id}/settings` Call. **Nur 2 Params settable:** `warmEmailMax` + `warmEmailRampup`. `dailyEmails`, `replyRate`, `rampUp` existieren NICHT.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/user/email-accounts` | POST | Connect email account (Custom-SMTP only — Gmail/MS via UI-OAuth) |
+| `/user/email-accounts/{id}` | DELETE | Disconnect (soft: removes credentials, pauses warmup, unlinks campaigns) |
 | `/email-accounts/{id}/test` | POST | Test email connection |
-| `/lemwarm/{id}` | GET | Get lemwarm settings |
-| `/lemwarm/{id}/start` | POST | Start lemwarm |
+| `/lemwarm/{id}` | GET | Get lemwarm settings (returns `active, dailyLimit, warmupTemplate, deliverability`) |
+| `/lemwarm/{id}/start` | POST | Start lemwarm — **parameterless** |
 | `/lemwarm/{id}/pause` | POST | Pause lemwarm |
-| `/lemwarm/{id}` | PATCH | Update lemwarm settings |
+| `/lemwarm/{id}/settings` | PATCH | Update lemwarm settings — only `warmEmailMax` + `warmEmailRampup` settable |
+
+**Mailbox-OAuth-Status:** Kein Webhook-Event für `mailboxConnected` / `oauthCompleted`. Polling auf `GET /user.mailboxes` Pflicht.
 
 ### Schedules
 
@@ -680,3 +467,112 @@ Der PATCH gibt manchmal `"variables": "[object Object]"` als String zurück - da
   "X-RateLimit-Reset": "Tue Feb 16 2021 09:02:42 GMT+0100"
 }
 ```
+
+## Error Handling
+
+### HTTP Status Codes
+
+| Code | Description | Solution |
+|------|-------------|----------|
+| `200` | Success | - |
+| `201` | Created | - |
+| `400` | Bad Request | Check request parameters |
+| `401` | Unauthorized | Check API key |
+| `403` | Forbidden | User may be blocked |
+| `404` | Not Found | Resource doesn't exist |
+| `405` | Method Not Allowed | Wrong HTTP method |
+| `409` | Conflict | Resource already exists |
+| `422` | Unprocessable | Validation error |
+| `429` | Rate Limited | Wait and retry |
+
+### Common Errors
+
+**"The authentication you supplied is incorrect"**
+- **Cause:** Invalid or missing API key
+- **Solution:** Check `LEMLIST_API_KEY` environment variable
+
+**"Bad team"**
+- **Cause:** API key doesn't match any team
+- **Solution:** Verify API key from correct account
+
+**"Campaign not found"**
+- **Cause:** Invalid campaign ID
+- **Solution:** Use `/campaigns` to list valid IDs
+
+**"Rate limit exceeded"**
+- **Cause:** Too many requests
+- **Solution:** Implement retry with backoff
+
+## Testing
+
+Run the included test suite:
+
+```bash
+# Set your API key
+export LEMLIST_API_KEY="your_api_key"
+
+# Run all tests
+cd tests && python -m pytest
+
+# Run only integration tests (read-only)
+python -m pytest test_integration_*.py
+
+# Run specific test
+python -m pytest test_integration_campaigns_read.py -v
+```
+
+See `docs/testing.md` for detailed testing instructions.
+
+## Examples
+
+See `examples/` directory for complete working examples:
+- `campaigns.py` - Campaign management
+- `leads.py` - Lead operations
+- `inbox.py` - Inbox operations
+
+## Notes
+
+- All timestamps are in ISO 8601 format (UTC)
+- IDs use format: `{prefix}_{hash}` (e.g., `cam_abc123`, `lea_def456`)
+- Campaign exports are available for 24 hours after completion
+- Webhook events are sent as POST requests to your URL
+- Credits are consumed for enrichment operations
+
+## Email Personalization — Liquid Syntax
+
+Lemlist verwendet Liquid-Syntax für dynamische E-Mail-Inhalte:
+
+```liquid
+{{ firstName | default: "there" }}
+{{ companyName | default: "your company" }}
+
+{% if companyName %}your neighbors in{% else %}those in{% endif %} Silicon Valley
+```
+
+**Best Practices:**
+- Immer `| default: "..."` setzen, damit Emails auch ohne den Wert valide sind
+- Personalisierung über `{{firstName}}` hinaus: Firma, Branche, aktuelle News
+- E-Mails unter 100 Wörter halten
+- Ein klarer CTA pro E-Mail
+- Versandzeiten: Dienstag–Donnerstag, 8–10 Uhr oder 14–16 Uhr (Empfänger-Timezone)
+- Follow-up-Abstand: Tag 3, 7, 14
+
+## Documentation
+
+For detailed guides on specific topics, see the `docs/` directory:
+
+| Document | Topic |
+|----------|-------|
+| [docs/authentication.md](docs/authentication.md) | Authentication methods |
+| [docs/error-handling.md](docs/error-handling.md) | Error codes and handling |
+| [docs/rate-limits.md](docs/rate-limits.md) | Rate limiting details |
+| [docs/PROCESS_DOCUMENTATION.md](docs/PROCESS_DOCUMENTATION.md) | Verified workflows |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and solutions |
+| [docs/PAGINATION.md](docs/PAGINATION.md) | Pagination behavior |
+| [docs/LEAD_STATES.md](docs/LEAD_STATES.md) | Lead state reference |
+| [docs/ASSUMPTIONS_TESTED.md](docs/ASSUMPTIONS_TESTED.md) | Tested assumptions |
+| [docs/testing.md](docs/testing.md) | Testing guidelines |
+
+---
+
+*Last updated: 2026-05-21*

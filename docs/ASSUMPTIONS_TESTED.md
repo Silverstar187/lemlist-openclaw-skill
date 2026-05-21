@@ -122,4 +122,53 @@ POST /campaigns/{id}/sequence
 
 ---
 
-*Dokumentation für Subagenten-Nachtests*
+## Update 2026-05-04 — Endpoint-Existenz-Tests (Free-Plan-Key)
+
+### Methodik
+402-vs-HTML-catchall-Heuristik: Lemlist returnt für Pro-Plan-Endpoints `HTTP 402 + "route is available starting emailPro plan"`, für nicht-existente Pfade `HTTP 200 + HTML-Web-App` (catch-all). JSON-Response = real + accessible.
+
+### Korrekturen am Skill nötig (jetzt eingearbeitet)
+
+| Annahme | Test-Result | Korrektur |
+|---|---|---|
+| `/email-accounts` Pfad | 200 + HTML = NOT-EXISTS | Korrekt: `/user/email-accounts` (402 = Plan-blocked, real route) |
+| `/lemwarm/{id}` PATCH für Settings | 405 | Korrekt: `/lemwarm/{id}/settings` (400 = needs body, real route) |
+| `/lemwarm/{id}/start` mit Body-Params | parameterless | dailyEmails/replyRate/rampUp existieren NICHT |
+| `/contact-lists`, `/notes`, `/opportunities` | HTML-catchall | NOT-EXISTS — Skill-Doku-Annahme war falsch |
+
+### Neu entdeckt (verified live)
+
+- `/campaigns/{id}/duplicate` POST — kopiert Campaign inkl. Sequence + Schedules in 1 Call (402-Plan-blocked = real route)
+- `/companies` GET/POST — CRM (200 mit echten Daten)
+- `/contacts` GET/POST (400 ohne Body = real)
+- `/fields` GET (read-only, POST=405)
+- `/tasks` GET/POST
+- `/watchlist/signals` GET
+- `/inbox/labels` GET/POST
+
+### Tenant-Provisioning-Verdict (verified)
+
+Folgende Endpoints existieren NICHT (HTML-catchall) — Tenant-Provisioning braucht Browser-Automation:
+- `/teams` (Team-Create UI-only)
+- `/users` (User-List UI-only)
+- `/billing/cards` (Billing UI-only)
+- `/domains` (Domain-Buy UI-only — Lemlist hat aber UI-Feature seit Jan 2026)
+- `/team/sending/domains` (Sending-Domain UI-only)
+
+Ausnahme: `/users/invite` POST returnt 200/`{}` für any body — **silent stub**, nicht funktional. Cross-validation via offizielle Doku bestätigt: Guest-Invite ist UI-only.
+
+### Webhook-Validation (verified-docs)
+
+Lemlist nutzt **KEIN HMAC**. Statt: `secret`-Field plaintext im JSON-Body. Validation = String-Compare. Secret immutable nach Create, nicht via `GET /hooks` retrieve-bar.
+
+### Lemwarm-Settings (verified-docs)
+
+Nur 2 Params settable via `PATCH /lemwarm/{id}/settings`:
+- `warmEmailMax` (max warm-emails per day)
+- `warmEmailRampup` (daily increase)
+
+Duration hardcoded server-side. Nicht konfigurierbar.
+
+---
+
+*Dokumentation für Subagenten-Nachtests · Update durch Live-Tests gegen `api.lemlist.com` 2026-05-04*
