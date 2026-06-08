@@ -192,6 +192,8 @@ curl -s "https://api.lemlist.com/api/campaigns" \
 
 ⚠️ **API v2:** über Query-Param `?version=v2` aktivieren, NICHT Pfad-Änderung. Base bleibt `https://api.lemlist.com/api`.
 
+⚠️ **Cloudflare blockt Nicht-Browser-Clients** (verifiziert 2026-06-08): Python `urllib`/`requests` mit Default-UA (`Python-urllib/3.x`) bekommen `403 {error code: 1010}` auf JEDEN Endpoint. `curl` (Default-UA `curl/x.y`) geht durch. Fix für eigene Skripte: Browser-`User-Agent`-Header setzen, z.B. `Mozilla/5.0 (...) Chrome/124.0 Safari/537.36`.
+
 Lemlist uses **HTTP Basic Auth** with an empty username and your API key as the password:
 
 ```bash
@@ -351,11 +353,14 @@ Body: {
 
 ### Enrichment
 
+⚠️ **`/enrich` Params gehören in den QUERY-STRING, NICHT in den JSON-Body** (verifiziert 2026-06-08). Body-Flags werden ignoriert → `400 "No enrichment requested"`. Body leer lassen, alles als `?email=...&findPhone=true&...` anhängen. Flags: `findEmail | findPhone | linkedinEnrichment | verifyEmail` (mind. 1). Browser-`User-Agent` Pflicht (sonst CF `403 1010`). Async: POST → `{"id":"enr_..."}`, dann `GET /enrich/{id}` bis `enrichmentStatus=="done"` pollen.
+Phone-Shape: Treffer `data.phone={"phone":"+49…","notFound":false}`; sonst `{"notFound":false/true}`. Kosten: Phone nur bei Treffer (~24 cr/Nr), notFound ~gratis; DE-Hit-Rate ~33%. Identitäts-Match läuft primär über die **E-Mail** (eindeutiger Key); Vor-/Nachname + Firma sind nur Hints. Details: [docs/PROCESS_DOCUMENTATION.md](docs/PROCESS_DOCUMENTATION.md) §5.
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/enrich` | POST | Enrich single entity |
+| `/enrich?<params>` | POST | Enrich single entity (params in QUERY-STRING, body empty, async) |
 | `/v2/enrichments/bulk` | POST | Bulk enrichment (max 500) |
-| `/enrich/{enrichId}` | GET | Get enrichment result |
+| `/enrich/{enrichId}` | GET | Get enrichment result (poll until `enrichmentStatus==done`) |
 | `/leads/{leadId}/enrich` | POST | Enrich existing lead |
 
 ### Database (Lemleads B2B-DB, 450M)
@@ -575,4 +580,4 @@ For detailed guides on specific topics, see the `docs/` directory:
 
 ---
 
-*Last updated: 2026-05-21*
+*Last updated: 2026-06-08*

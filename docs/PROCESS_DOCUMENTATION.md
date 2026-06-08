@@ -87,14 +87,29 @@ GET /campaigns/{campaignId}/leads/{leadId}
 ```
 
 ### 5. Enrichment (Optional)
+
+⚠️ **ALLE Params im QUERY-STRING, NICHT im Body** (verifiziert 2026-06-08). JSON-Body wird ignoriert → `400 "No enrichment requested"`. Body leer lassen.
+⚠️ **Browser-User-Agent Pflicht** sonst Cloudflare `403 error 1010`.
+⚠️ **Async:** POST gibt nur `{"id":"enr_..."}` zurück → pollen via `GET /enrich/{id}` bis `enrichmentStatus == "done"`.
+
 ```bash
-POST /enrich
-Body: {
-  "email": "lead@example.com",
-  "findEmail": true,
-  "linkedinEnrichment": true
-}
+# Flags: findEmail | findPhone | linkedinEnrichment | verifyEmail (mind. 1)
+curl -s -X POST \
+  "https://api.lemlist.com/api/enrich?email=lead@example.com&firstName=Max&companyName=ACME&findPhone=true&linkedinEnrichment=true" \
+  --user ":$LEMLIST_API_KEY" \
+  -H "User-Agent: Mozilla/5.0"
+# -> {"id":"enr_xxx"}
+
+# Poll:
+curl -s "https://api.lemlist.com/api/enrich/enr_xxx" --user ":$LEMLIST_API_KEY" -H "User-Agent: Mozilla/5.0"
 ```
+
+**Phone-Result-Shape:** Treffer = `data.phone = {"phone":"+49...","notFound":false}`; kein Treffer = `{"notFound":false}` (Feld `phone` fehlt) oder `{"notFound":true}`.
+**Kosten:** Phone-Credit nur bei Treffer (~24 Credits/Nummer); notFound quasi gratis. LinkedIn-Enrichment ~1 Credit. Hit-Rate DE/DACH ~33%.
+
+**Identitäts-Match:** Primär-Key ist die **E-Mail** (eindeutig). `firstName`+`companyName` sind zusätzliche Match-Hints und verbessern die Auflösung messbar — ohne sie löst `email`-only öfter gar nichts auf. Bei `vorname.nachname@firma`-Adressen ist der Nachname implizit in der Mail, fehlende Nachname-Spalte ist also unkritisch. Aufgelöstes Profil steht in `data.linkedin` (`firstName`/`lastName`/`companyName`/`linkedinUrl`) — zur Verifikation gegen den erwarteten Lead abgleichen.
+
+⚠️ **Resolver ist intermittent/gedrosselt:** identische Anfrage liefert mal Profil, mal leeres `data.linkedin` (silent, kein Fehler — vermutlich tägliche Search-Quota wie bei `/database/people`). Für verlässliche Auflösung bis zu 3× retry mit Pause. `findPhone`-Treffer aus einem früheren Lauf bleiben gültig, auch wenn ein späterer Re-Fetch leer kommt.
 
 ### 6. Sequenz Erstellen (Optional)
 ```bash
